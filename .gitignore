@@ -1,5 +1,4 @@
 __pycache__/
 opus_books_weights/
 runs/
-tokenizer_en.json
-tokenizer_it.json
+*.json

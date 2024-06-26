@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+import numpy as np
 
 class InputEmbeddings(nn.Module):
     def __init__(self,d_model:int,vocab_size:int):
@@ -204,7 +205,7 @@ class Transformer(nn.Module):
         return self.projection_layer(x)
     
         
-def build_transformer(src_vocab_size, target_vocab_size, src_seq_len, target_seq_len,d_model=512,N = 6, num_heads = 8, dropout = 0.1, hidden_dims = 2048,) -> Transformer:
+def build_transformer(src_vocab_size, target_vocab_size, src_seq_len, target_seq_len,d_model=512,N = 6, num_heads = 8, dropout = 0.1, hidden_dims = 2048) -> Transformer:
     src_embedd = InputEmbeddings(d_model, src_vocab_size)
     target_embedd = InputEmbeddings(d_model,target_vocab_size)
     
@@ -239,3 +240,4 @@ def build_transformer(src_vocab_size, target_vocab_size, src_seq_len, target_seq
             nn.init.xavier_uniform(p)
             
     return transformer
+
