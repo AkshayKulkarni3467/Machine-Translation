@@ -186,6 +186,140 @@ class EncoderBlock(nn.Module):
 ```
 > Shape : input (positional encoding) = (batch, sequence_length, embedding_size) -> output (batch, sequence_length, embedding_size)
 
+-`encoder`: The encoder can contain many layers of encoder blocks to capture the entire position and context of a given sentence.
+
+```python
+class Encoder(nn.Module):
+    def __init__(self,layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm  = LayerNormalization()
+        
+    def forward(self,x,src_mask):
+        for layer in self.layers:
+            x = layer(x,src_mask)
+        return self.norm(x)
+```
+> Shape : input = (batch, sequence_length, embedding_size) -> output = (batch, sequence_length, embedding_size)
+
+In this implementation, we use 6 layers of the encoder. The output of the encoder is used as the K, V tensors for the input of the decoder.
+
+-`decoder block`: The decoder block takes in the positional embeddings of the output language, performs masked self-attention on it. Masked self-attention makes sure that a token in any given sentence cannot compute the attention scores of the words ahead of it. The output of masked self-attention is used as the Q value in the cross self-attention block. Here, self-attention is performed between the Q and the K, V values of the output of the encoder. This is than fed into a feed forward layer which gives us the output of the decoder. The decoder block uses 3 residual connections.
+
+```python
+class DecoderBlock(nn.Module):
+    def __init__(self, self_attention_block:MultiHeadAttentionBlock,cross_attention_block: MultiHeadAttentionBlock, mlp: FeedForwardBlock, dropout: float):
+        super().__init__()
+        self.self_attention_block = self_attention_block
+        self.cross_attention_block = cross_attention_block
+        self.mlp = mlp
+        self.residual_connections = nn.ModuleList([ResidualConnection(dropout) for _ in range(3)])
+        
+    def forward(self,x, encoder_output, src_mask, target_mask):
+        x = self.residual_connections[0](x,lambda x : self.self_attention_block(x,x,x,target_mask))
+        x = self.residual_connections[1](x,lambda x : self.cross_attention_block(x,encoder_output,encoder_output,src_mask))
+        x = self.residual_connections[2](x,lambda x : self.mlp(x))
+        return x
+```
+> Shape : input = (batch, sequence_length, embedding_size) -> output = (batch, sequence_length, embedding_size)
+
+Number of parameters in Decoder : 3 x embedding_size + 1 x embedding_size (masked self attention) + 3 x embedding_size + 1 x embedding_size (cross self attention) + 2 x hidden_dim x embedding_size (feed forward layer) + 2 * 3 ( layer normalization)
+
+-`decoder`: The decoder consists of layers of decoder blocks. In this project, we use 6 layers of decoder blocks
+
+```python
+class Decoder(nn.Module):
+    def __init__(self,layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNormalization()
+        
+    def forward(self,x,encoder_output,src_mask,target_mask):
+        for layer in self.layers:
+            x = layer(x,encoder_output,src_mask,target_mask)
+        return self.norm(x)
+```
+> Shape : input = (batch, sequence_length, embedding_size) -> output = (batch, sequence_length, embedding_size)
+
+-`projection layer`: The output of decoder is than passed through a projection layer which projects the embedding_size into target_vocab_size and applies softmax operation on that dimension. Hence, we can retrive the maximum probabiliy for a translated word in the sentence.
+
+```python
+class ProjectionLayer(nn.Module):
+    def __init__(self,d_model:int,vocab_size:int) -> None:
+        super().__init__()
+        self.proj = nn.Linear(d_model,vocab_size)
+        
+    def forward(self,x):
+        # to do : (batch, seqlen, d_model) -> (batch, seqlen, vocab_size) -> (batch, seqlen
+        return torch.log_softmax(self.proj(x), dim = -1)
+```
+>Shape : input = (batch, sequence_length, embedding_size) -> output = (batch, sequence_length, target_vocab_size)
+
+
+
+  
+## Transformer
+
+- The transformer combines the embedddings, positional encoding, encoder block layers, decoder block layers, projection layer to output its prediction.
+- We can calculate the cost function in transformer using the CrossEntropyLoss function, by the formula:
+
+![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/8aff3d6b-c88f-46d9-a5df-3e1c259ff060)
+
+```python
+class Transformer(nn.Module):
+    def __init__(self, encoder: Encoder, decoder : Decoder, src_embedd: InputEmbeddings, target_embedd: InputEmbeddings, src_pos: PositionalEncoding, target_pos: PositionalEncoding,projection_layer: ProjectionLayer):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.src_embedd = src_embedd
+        self.target_embedd = target_embedd
+        self.src_pos = src_pos
+        self.target_pos = target_pos
+        self.projection_layer = projection_layer
+        
+    def encode(self, src, src_mask):
+        src = self.src_embedd(src)
+        src = self.src_pos(src)
+        return self.encoder(src, src_mask)
+    
+    def decode(self, encoder_output, src_mask, target,target_mask):
+        target = self.target_embedd(target)
+        target = self.target_pos(target)
+        return self.decoder(target,encoder_output,src_mask, target_mask)
+
+    def project(self, x):
+        return self.projection_layer(x)
+```
+>Shape : input = (batch, sequence_length) -> output = (batch, sequence_length, target_vocab_size)
+
+## Training the Transformer for Machine Translation:
+
+We use the subset of english to italian translation from helsinki dataset to train the model.
+
+Cost function after 10 epochs of training:
+
+![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/83a66ff1-e3fa-4f49-acda-d797951c064c)
+
+## Visualising the attention scores after 10 epochs:
+
+- Attention scores in encoder block in layer 0 and head 0,1:
+
+![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/3fdcaa6b-3ad4-42e6-9dd0-4fcdf2c4f559)
+
+- Attention scores in masked attention decoder block in layer 0 and head 0,1:
+
+![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/6682f05a-421a-4ada-9b7c-46b066995ca1)
+
+As you can see, there's no attention scores in the upper triangular area of the matrix since the attention is masked.
+
+- Attention scores in cross attention decoder block in layer 0 and head 0,1:
+
+
+![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/9661f2be-2544-46db-987b-b4f62a729fc7)
+
+
+
+
 
 
 
