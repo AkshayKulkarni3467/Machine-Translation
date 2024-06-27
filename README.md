@@ -316,13 +316,14 @@ As you can see, there's no attention scores in the upper triangular area of the 
 
 ![image](https://github.com/AkshayKulkarni3467/Machine-Translation/assets/129979542/9661f2be-2544-46db-987b-b4f62a729fc7)
 
-> [!NOTE]
+
 > Model achieving the right meaning even though the labels and the predicted output are different:
-> --------------------------------------------------------------------------------
->    SOURCE: 'Wait a moment!
->    TARGET: — Ah, lascia stare!
-> PREDICTED: — Ah , aspetta !
->--------------------------------------------------------------------------------
+```python --------------------------------------------------------------------------------
+    SOURCE: 'Wait a moment!
+    TARGET: — Ah, lascia stare!
+ PREDICTED: — Ah , aspetta !
+--------------------------------------------------------------------------------
+```
 
   
 
