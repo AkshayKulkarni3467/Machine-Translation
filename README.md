@@ -318,7 +318,8 @@ As you can see, there's no attention scores in the upper triangular area of the 
 
 
 > Model achieving the right meaning even though the labels and the predicted output are different:
-```python --------------------------------------------------------------------------------
+```text
+--------------------------------------------------------------------------------
     SOURCE: 'Wait a moment!
     TARGET: — Ah, lascia stare!
  PREDICTED: — Ah , aspetta !
