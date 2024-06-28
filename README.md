@@ -325,7 +325,12 @@ As you can see, there's no attention scores in the upper triangular area of the 
  PREDICTED: — Ah , aspetta !
 --------------------------------------------------------------------------------
 ```
-
+- Model output after 15 epochs :
+```text
+Using model : opus_books_weights\tmodel_15.pt
+Enter a sentence in English: She looked at him .
+Translation: Ella lo guardò .
+```
   
 
 
